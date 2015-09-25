@@ -9,14 +9,23 @@
 #import "VNetworkManager.h"
 
 #import "SignedAlgo.h"
-#import <MKNetworkKit.h>
-#import "VDataCenter.h"
+//#import <MKNetworkKit.h>
+#import "DataCenter.h"
 
+#import "NSString+MKNetworkKitAdditions.h"
+
+#import <AFNetworking.h>
 
 #define kIOS_CLIENT         @"IOS"
 
+@interface VNetworkManager ()
 
-@implementation VNetworkManager
+
+@end
+
+@implementation VNetworkManager{
+  //  MKNetworkEngine *engine;
+}
 
 + (id)sharedClient {
     
@@ -31,7 +40,6 @@
 }
 
 - (id)init {
-    
     self = [super init];
     
     if (self) {
@@ -40,17 +48,20 @@
     return self;
 }
 
-
 - (void)processOperation:(VConnection *)connection sign:(BOOL)sign{
+    
     NSString * hostURL = kBaseURL;
-
-    MKNetworkEngine *engine = [[MKNetworkEngine alloc] initWithHostName:hostURL customHeaderFields:nil];
-    NSString * method = connection.method == 0 ? @"POST" : @"GET";
+    
+    if ([connection.path isEqualToString:@"interface/useroplog"]) {
+        hostURL = kLogURL;
+    }
+    
+    NSURL * baseURL = [NSURL URLWithString:hostURL];
     
     NSMutableDictionary * dict = [[NSMutableDictionary alloc] init];
     
     //登陆，发送验证码需要特殊sign
-    if ([connection.path isEqualToString:@"user/login"] || [connection.path isEqualToString:@"user/signup"]) {
+    if ([connection.path isEqualToString:@"user/login"] || [connection.path isEqualToString:@"sms/sendAuthCodeV2"]) {
         
         dict = [self handlerSpecialParamsDic:connection.data];
     }else{
@@ -59,6 +70,27 @@
     
     NSLog(@"%@, params --> %@", connection.path, dict);
     
+    AFHTTPRequestOperationManager *manager = [[AFHTTPRequestOperationManager alloc] initWithBaseURL:baseURL];
+    
+    manager.responseSerializer = [AFJSONResponseSerializer serializer];
+    
+    [manager POST:connection.path parameters:dict success:^(AFHTTPRequestOperation *operation, id responseObject) {
+        
+        if (responseObject == nil) {
+            NSDictionary * dict = @{@"code":@"-100",@"message":@"请稍后再试"};
+            [connection didSuccess:dict];
+        }
+        else{
+            [connection didSuccess:responseObject];
+        }
+        
+    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+        [connection didFailed:error];
+    }];
+    
+    /*
+    engine = [[MKNetworkEngine alloc] initWithHostName:hostURL customHeaderFields:@{@"User-Agent":@"SANQUAN_iOS"}];
+
     MKNetworkOperation* op = [engine operationWithPath:connection.path params:dict httpMethod:method];
     
     [op addCompletionHandler:^(MKNetworkOperation *completedOperation) {
@@ -75,7 +107,8 @@
         [connection didFailed:error];
     }];
     
-    [engine enqueueOperation:op];    
+    [engine enqueueOperation:op];
+    */
 }
 
 
@@ -89,8 +122,8 @@
         NSString * sign = [SignedAlgo getSignWithDic:params];
         [params setObject:sign forKey:@"sign"];
         
-        if ([VDataCenter shared].curUserID != nil) {
-            [params setObject:[VDataCenter shared].curUserID forKey:@"u"];
+        if ([DataCenter shared].curUserID != nil) {
+            [params setObject:[DataCenter shared].curUserID forKey:@"u"];
         }
     }
     
@@ -118,12 +151,18 @@
     return params;
 }
 
-
 -(NSString *)unixtime
 {
     NSDate* dat = [NSDate dateWithTimeIntervalSinceNow:0];
     NSTimeInterval ad=[dat timeIntervalSince1970];
     NSString *timeSp = [NSString stringWithFormat:@"%.0f", ad];//转为字符型
+    
+    int s = [[timeSp substringFromIndex:timeSp.length-3] intValue];
+    
+    if(s == 0){
+        ad++;
+    }
+    timeSp = [NSString stringWithFormat:@"%.0f", ad]; //转为字符型
     
     return timeSp;
 }
@@ -131,17 +170,9 @@
 -(NSString *)signtime
 {
     NSString *timeSp=[self unixtime];
-    //sign: 1、（Unix时间戳+Unix时间戳最后两位）/ Unix时间戳倒数3位 2、将商强制取整 3、做两次md5
-    int a=[timeSp intValue];
-    int b=[[timeSp substringFromIndex:timeSp.length-2] intValue];
-    int s1=a+b;
-    int s2=[[timeSp substringFromIndex:timeSp.length-3] intValue];
-    int n=s1/s2;
     
-    NSString * sign = [[[NSString stringWithFormat:@"%d",n] md5] md5];
+    //sign: 需要特殊处理，已删掉
     return sign;
 }
-
-
 
 @end

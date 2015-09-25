@@ -28,26 +28,10 @@ NSInteger alphabeticSort(id string1, id string2, void *reverse)
     NSArray *keyArray= [parameterDic allKeys];
 //    keyArray= [keyArray sortedArrayUsingFunction:alphabeticSort context:&reverseSort];
     
-    keyArray = [keyArray sortedArrayUsingSelector:@selector(compare:)];
-    NSString *parametersStr = @"";
-    
-    for (int i = 0; i< [keyArray count]; i++){
-        
-        NSString *keyStr = [keyArray objectAtIndex:i];
-        NSString *valueStr = [parameterDic objectForKey:keyStr];
-
-        NSString *keyandvalue = [[NSString alloc]initWithFormat:@"%@%@",keyStr,valueStr];
-        parametersStr = [parametersStr stringByAppendingString:keyandvalue];
-    }
-    
-    NSString * password = [kUSER_DEFAULT objectForKey:@"password"];
-    
-    NSString *signStr = [NSString stringWithFormat:@"%@%@%@",password, parametersStr, password];
-
-    NSLog(@"signString --> %@", signStr);
-    
-    NSString * urlMD5 = [[signStr md5] uppercaseString];
-
+/*
+    签名算法
+ 
+ */
     return urlMD5;
 }
 

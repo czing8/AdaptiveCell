@@ -31,7 +31,6 @@ typedef void (^RequestFailed) (NSError *error);
 - (NSDictionary *)data;
 - (NSString *)path;
 
-
 - (void)didSuccess:(id)object;
 
 - (void)didFailed:(NSError *)error;
