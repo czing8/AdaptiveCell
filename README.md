@@ -1,2 +1,2 @@
 # APIDebugDemo
-APIDebugDemo
+NetworkManager, for network operation.
